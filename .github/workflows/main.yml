@@ -1,0 +1,41 @@
+name: Build APK
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Set up Python
+      uses: actions/setup-python@v2
+      with:
+        python-version: 3.9
+
+    - name: Install dependencies
+      run: |
+        pip install flet
+
+    - name: Build APK
+      run: |
+        pip install buildozer
+        sudo apt update
+        sudo apt install -y build-essential libssl-dev libffi-dev python3-dev python3-pip
+        sudo apt install -y openjdk-8-jdk
+        sudo apt install -y unzip
+        sudo apt install -y git python3-pip
+        pip install cython
+        buildozer init
+        buildozer -v android debug
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v2
+      with:
+        name: app
+        path: bin/*.apk
