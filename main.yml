@@ -1,4 +1,4 @@
-name: Build APK
+name: Android Release
 
 on:
   push:
@@ -10,27 +10,34 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
+    - name: Checkout repository
+      uses: actions/checkout@v2
 
-    - name: Set up Python
-      uses: actions/setup-python@v4
+    - name: Set up JDK 11
+      uses: actions/setup-java@v2
       with:
-        python-version: '3.8'
+        distribution: 'zulu'
+        java-version: 11
 
-    - name: Install dependencies
-      run: |
-        sudo apt update
-        sudo apt install -y python3-pip python3-setuptools python3-wheel python3-virtualenv zip unzip openjdk-8-jdk build-essential git
-        pip install -r requirements.txt
+    - name: Grant execute permission for gradlew
+      run: chmod +x gradlew
 
-    - name: Build APK
+    - name: Build with Gradle
+      run: ./gradlew build
+
+    - name: Sign APK
+      env:
+        KEYSTORE_PATH: ${{ secrets.KEYSTORE_PATH }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
-        buildozer init
-        buildozer android debug
+        ./gradlew assembleRelease
+        jarsigner -verbose -sigalg SHA256withRSA -digestalg SHA-256 -keystore $KEYSTORE_PATH app/build/outputs/apk/release/app-release-unsigned.apk $KEY_ALIAS
+        zipalign -v 4 app/build/outputs/apk/release/app-release-unsigned.apk app/build/outputs/apk/release/app-release.apk
 
     - name: Upload APK
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v2
       with:
-        name: my-app
-        path: bin/*.apk
+        name: app-release.apk
+        path: app/build/outputs/apk/release/app-release.apk
